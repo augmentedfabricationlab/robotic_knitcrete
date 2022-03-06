@@ -45,19 +45,22 @@
 #### AM Information Model
     
     (your_env_name) python -m pip install git+https://github.com/augmentedfabricationlab/am_information_model@master#egg=am_information_model
-    (wiw) python -m compas_rhino.install -p am_information_model -v 7.0
+    (your_env_name) python -m compas_rhino.install -p am_information_model -v 7.0
 
 #### UR Fabrication Control
     
     (your_env_name) python -m pip install git+https://github.com/augmentedfabricationlab/ur_fabrication_control@master#egg=ur_fabrication_control
-    (wiw) python -m compas_rhino.install -p ur_fabrication_control -v 7.0
+    (your_env_name) python -m compas_rhino.install -p ur_fabrication_control -v 7.0
 
 
 ### 3. Cloning and installing the Course Repository
 
 * Create a workspace directory: C:\Users\YOUR_USERNAME\workspace
-* Open Github Desktop, clone the [robotic_knitcrete](https://github.com/augmentedfabricationlab/window_in_wall) repository into you workspace folder 
-* Install within your wiw env (in editable mode):
+* Open Github Desktop, clone the [robotic_knitcrete](https://github.com/augmentedfabricationlab/robotic_knitcrete) repository into you workspace folder 
+* Install within your env (in editable mode):
+
+    (your_env_name) pip install -e your_filepath_to_robotic_knitcrete
+    (your_env_name) python -m compas_rhino.install -p robotic_knitcrete -v 7.0
 
 ### 4. Notes on RPC:
 
