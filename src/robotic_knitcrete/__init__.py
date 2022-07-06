@@ -20,6 +20,6 @@ Describe typical classes found in project
 
 """
 
-from .sample_module import SampleClassName
+from .surface_path_planner import SurfacePathPlanner
 
-__all__ = ['SampleClassName']
+__all__ = ['SurfacePathPlanner']
