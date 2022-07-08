@@ -1,14 +1,15 @@
 # Robotic 3D Printing on Knitted Formwork
 
-**Quick links:** [compas docs](https://compas-dev.github.io/main/) | [compas_fab docs](https://gramaziokohler.github.io/compas_fab/latest/)
-
 ## Requirements for Form-Finding
 
 * [Rhinoceros 3D 7.0](https://www.rhino3d.com/): Update Rhino to the newest version
 * Equilib (install EQlib and EQlib-Mkl via the Rhino Package Manager)
 * [Karamba 3D](https://www.karamba3d.com/download/): Download the file and install the FREE version 
 
-## Requirements
+
+## Requirements for Knitting and 3D Printing
+
+**Quick links:** [compas docs](https://compas-dev.github.io/main/) | [compas_fab docs](https://gramaziokohler.github.io/compas_fab/latest/)
 
 * [Rhinoceros 3D 7.0](https://www.rhino3d.com/)
 * [Anaconda Python Distribution](https://www.anaconda.com/download/): 3.x
