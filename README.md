@@ -53,11 +53,9 @@
 * Open Github Desktop, clone the [robotic_knitcrete](https://github.com/augmentedfabricationlab/robotic_knitcrete) repository into you workspace folder 
 * Install within your env (in editable mode):
 
-```
-(robknit) cd C:\Users\YOUR_USERNAME\workspace
-(robknit) python -m pip install -e robotic_knitcrete
-(robknit) python -m compas_rhino.install -p robotic_knitcrete -v 7.0
-```
+    (robknit) cd C:\Users\YOUR_USERNAME\workspace
+    (robknit) python -m pip install -e robotic_knitcrete
+    (robknit) python -m compas_rhino.install -p robotic_knitcrete -v 7.0
 
 ### 4. Notes on RPC:
 
