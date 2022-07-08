@@ -7,10 +7,13 @@ class SurfacePathPlanner():
     def __init__(self):
         self.mesh = None
         self.network = Network(name="network")
+        self.network.path = []
         self.network.default_node_attributes = {
             'x':0, 'y':0, 'z':0,
             'vx':0, 'vy':0, 'vz':0,
-            'neighbors':0, 'number_of_neighbors':0
+            'neighbors':0, 'number_of_neighbors':0,
+            'frame':None,
+            'path_key':None
         }
 
     def set_quad_mesh(self, mesh):
@@ -34,7 +37,8 @@ class SurfacePathPlanner():
             'vx':normal[0], 'vy':normal[1], 'vz':normal[2],
             'neighbors':neighbors,
             'number_of_neighbors':len(neighbors),
-            'frame':None
+            'frame':None,
+            'path_key':None
         })
         attr_dict.update(**kwattr)
         self.network.add_node(key=index, attr_dict=attr_dict)
@@ -46,9 +50,12 @@ class SurfacePathPlanner():
         self.set_node_frame_from_edge(end, new_edge)
         
     def set_node_frame_from_edge(self, node, edge):
+        zvec = Vector.from_data(self.network.node_attributes(key=node, names=['vx','vy','vz']))
+        xvec = self.network.edge_vector(edge[0], edge[1])
+        yvec = cross_vectors(xvec, -zvec)
         frame = Frame(Point.from_data(self.network.node_coordinates(node)),
-                      Vector.from_data(self.network.node_attributes(key=node, names=['x','y','z'])),
-                      self.network.edge_vector(edge[0], edge[1]))
+                      self.network.edge_vector(edge[0], edge[1]),
+                      yvec)
         self.network.node_attribute(key=node, name='frame', value=frame)
 
     def lowest_axis_path(self, orientation, image_values):
@@ -79,6 +86,7 @@ class SurfacePathPlanner():
         # Path finding process
         for index in self.mesh.faces():
             # Look for the neighbor with the lowest x/y/z
+            self.network.path.append(current)
             neighbornodes = {}
             for i in self.network.node_attribute(key=current, name='neighbors'):
                 if len(self.network.connected_edges(key=i))==0:
