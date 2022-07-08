@@ -33,10 +33,23 @@ class SurfacePathPlanner():
             'x':point[0], 'y':point[1], 'z':point[2],
             'vx':normal[0], 'vy':normal[1], 'vz':normal[2],
             'neighbors':neighbors,
-            'number_of_neighbors':len(neighbors)
+            'number_of_neighbors':len(neighbors),
+            'frame':None
         })
         attr_dict.update(**kwattr)
         self.network.add_node(key=index, attr_dict=attr_dict)
+
+    def add_edge(self, start, end):
+        new_edge = self.network.add_edge(start, end)
+        if self.network.node_attribute(key=start, name='frame') is None:
+            self.set_node_frame_from_edge(start, new_edge)
+        self.set_node_frame_from_edge(end, new_edge)
+        
+    def set_node_frame_from_edge(self, node, edge):
+        frame = Frame(Point.from_data(self.network.node_coordinates(node)),
+                      Vector.from_data(self.network.node_attributes(key=node, names=['x','y','z'])),
+                      self.network.edge_vector(edge[0], edge[1]))
+        self.network.node_attribute(key=node, name='frame', value=frame)
 
     def lowest_axis_path(self, orientation, image_values):
         """Creates a tool-path based on the given mesh topology.
@@ -45,7 +58,6 @@ class SurfacePathPlanner():
             mesh (compas mesh): Description of `mesh`
             orientation (int): X-axis = 1, Y-axis = 2, Z-axis =3
         """
-        print('t0', time.time())
         _orientation = ['x', 'y', 'z']
         if self.mesh == None:
             raise ValueError
@@ -53,9 +65,7 @@ class SurfacePathPlanner():
             self.set_network_nodes()
         
         n = 0 # Number of interruptions
-
         # Getting the starting point
-        
         cornernodes = self.network.nodes_where(conditions={'number_of_neighbors':2})
         if cornernodes != []:
             vals = [self.network.node_attribute(key=k, name=_orientation[orientation]) for k in cornernodes]
@@ -77,7 +87,7 @@ class SurfacePathPlanner():
             if neighbornodes != {}:
                 following = neighbornodes[min(neighbornodes.keys())]
                 # Draw a line between the current and following face centerpoints
-                self.network.add_edge(current, following)
+                self.add_edge(current, following)
             # If the face doesn't have free neighbors
             else:
                 # But has remaining unconnected nodes
@@ -85,7 +95,7 @@ class SurfacePathPlanner():
                     # Move to the closest available face centerpoint
                     following = self.move_to_closest(current)
                     # Draw a line between the current and the following face
-                    self.network.add_edge(current, following)
+                    self.add_edge(current, following)
                     n += 1
             current = following
         return self.network, n
