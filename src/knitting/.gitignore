@@ -1,0 +1,15 @@
+# VSCode settings
+.vscode
+
+# Style settings
+.flake8
+
+# Output data
+output
+
+# Pycache and Pytest cache
+__pycache__/
+.pytest_cache/
+
+# OS generated files
+.DS_Store

@@ -103,3 +103,6 @@ ENV/
 
 # Visual Studio Code
 .vscode/
+
+# OS generated files
+.DS_Store
