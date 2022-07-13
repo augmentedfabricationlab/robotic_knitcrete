@@ -21,5 +21,9 @@ Describe typical classes found in project
 """
 
 from .surface_path_planner import SurfacePathPlanner
+from .planner_mesh import PlannerMesh
 
-__all__ = ['SurfacePathPlanner']
+__all__ = [
+   'SurfacePathPlanner',
+   'PlannerMesh'
+]

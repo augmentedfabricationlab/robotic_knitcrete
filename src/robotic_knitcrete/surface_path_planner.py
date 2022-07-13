@@ -1,5 +1,7 @@
-from compas.datastructures import Mesh, Network
-from compas.geometry import Frame, Vector, Line, Point
+from genericpath import exists
+from .planner_mesh import PlannerMesh
+from compas.datastructures import Network
+from compas.geometry import Frame, Vector, Point
 from compas.geometry import cross_vectors, distance_point_point
 import time
 
@@ -20,8 +22,12 @@ class SurfacePathPlanner():
         self.mesh = mesh
         return self.mesh
 
+    def set_quad_mesh_from_rhinomesh(self, rhinomesh):
+        self.mesh = PlannerMesh.from_rhinomesh(rhinomesh)
+        return self.mesh
+
     def create_quad_mesh_from_surface(self, surface, nu, nv):
-        self.mesh = surface.to_mesh(nu, nv)
+        self.mesh = PlannerMesh.from_surface(surface, nu, nv)
         return self.mesh
 
     def set_network_nodes(self):
@@ -32,9 +38,11 @@ class SurfacePathPlanner():
         point = self.mesh.face_center(index)
         normal = self.mesh.face_normal(index)
         neighbors = self.mesh.face_neighbors(index)
+        color = [0,0,0]
         attr_dict.update({
             'x':point[0], 'y':point[1], 'z':point[2],
             'vx':normal[0], 'vy':normal[1], 'vz':normal[2],
+            'r':color[0], 'g':color[1], 'b':color[2],
             'neighbors':neighbors,
             'number_of_neighbors':len(neighbors),
             'frame':None,
@@ -58,31 +66,56 @@ class SurfacePathPlanner():
                       yvec)
         self.network.node_attribute(key=node, name='frame', value=frame)
 
-    def lowest_axis_path(self, orientation, image_values):
+    def get_node(self, **kwargs):
+        """
+        **kwargs can include any of the following:
+        - any condition to find nodes based on network.default_node_attributes
+        - 'orientation' : either 'x', 'y', or 'z'
+        - 'index' : 0 or 1 for minimum or maximum value
+        """
+        conditions = {}
+        func_dict = {0:min,1:max}
+        for key, value in kwargs.items():
+            if key in self.network.default_node_attributes.keys():
+                conditions.update({key:value})
+            elif key is 'index':
+                func = func_dict[value]
+        if 'orientation' not in locals():
+            orientation = None
+        if 'index' not in locals():
+            func = None
+            
+        nodes = self.network.nodes_where(conditions=conditions)
+        if nodes != []:
+            if orientation is not None:
+                vals = [self.network.node_attribute(key=k, name=orientation) for k in nodes]
+                if func is not None:
+                    fval = func(vals)
+                    return (nodes)[vals.index(fval)]
+                else:
+                    return list(nodes)[0]
+            else:
+                return list(nodes)[0]
+        else:
+            # In case there are valid nodes, returns Nonetype
+            return None
+
+    def lowest_axis_path(self, orientation):
         """Creates a tool-path based on the given mesh topology.
 
         Args:
             mesh (compas mesh): Description of `mesh`
             orientation (int): X-axis = 1, Y-axis = 2, Z-axis =3
         """
-        _orientation = ['x', 'y', 'z']
         if self.mesh == None:
             raise ValueError
         if self.network == None:
             self.set_network_nodes()
         
-        n = 0 # Number of interruptions
+        n = 0 # Number of interruptions        
+        current = self.get_node(number_of_neighbors=2, orientation=orientation, index=0)
         # Getting the starting point
-        cornernodes = self.network.nodes_where(conditions={'number_of_neighbors':2})
-        if cornernodes != []:
-            vals = [self.network.node_attribute(key=k, name=_orientation[orientation]) for k in cornernodes]
-            minimum_orientation = min(vals)
-            current = list(self.network.nodes_where(conditions= {
-                _orientation[orientation]:minimum_orientation
-            }))[0]
-        else:
-            # In case there are no corners, start the path on the face center with the lowest x/y/z value
-            current = 0
+        print(current)
         # Path finding process
         for index in self.mesh.faces():
             # Look for the neighbor with the lowest x/y/z
@@ -90,10 +123,10 @@ class SurfacePathPlanner():
             neighbornodes = {}
             for i in self.network.node_attribute(key=current, name='neighbors'):
                 if len(self.network.connected_edges(key=i))==0:
-                    neighbornodes.update({self.network.node_attribute(key=i, name=_orientation[orientation]): i})
+                    neighbornodes.update({i:self.network.node_attribute(key=i, name=orientation)})
             # If neighbors found then find the closest one based on orientation
             if neighbornodes != {}:
-                following = neighbornodes[min(neighbornodes.keys())]
+                following = list(neighbornodes.keys())[list(neighbornodes.values()).index(min(list(neighbornodes.values())))]
                 # Draw a line between the current and following face centerpoints
                 self.add_edge(current, following)
             # If the face doesn't have free neighbors
@@ -111,10 +144,11 @@ class SurfacePathPlanner():
     def move_to_closest(self, current):
         current_point = Point.from_data(self.network.node_coordinates(key=current))
         distances = {}
-        for j in self.network.nodes():
-            if len(self.network.connected_edges(key=j)) == 0:
-                d = distance_point_point(current_point, Point.from_data(self.network.node_coordinates(key=j)))
-                distances.update({d:j})
-        min_d = min(distances.keys())
-        following = distances[min_d]       
+        nodes = [key for key in self.network.nodes() if len(self.network.connected_edges(key))==0]
+        # print(nodes)
+        for j in nodes:
+            d = distance_point_point(current_point, Point.from_data(self.network.node_coordinates(key=j)))
+            distances.update({j:d})
+        min_d = min(distances.values())
+        following = distances.keys()[distances.values().index(min_d)]
         return following
