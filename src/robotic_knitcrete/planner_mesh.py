@@ -1,4 +1,5 @@
 from compas.datastructures import Mesh
+from compas.geometry import distance_point_point
 from itertools import product
 
 
@@ -61,5 +62,18 @@ class PlannerMesh(Mesh):
         ] for i, j in product(range(nu), range(nv))]
         return cls.from_vertices_and_faces(vertices, faces)
 
-    def face_color(self, key):
-        pass
+    def vertex_color(self, key, color_type='rgb'):
+        return self.vertex_attributes(key, color_type)
+
+    def face_color (self, key, color_type='rgb'):
+        vertices = self.face_vertices(key)
+        center = self.face_center(key)
+        sum_colors = [0,0,0]
+        sum_dists = 0
+        for vertex in vertices:
+            dist = distance_point_point(center, self.vertex_coordinates(vertex))
+            for i,c in enumerate(self.vertex_color(key, color_type)):
+                sum_colors[i] += c*dist
+            sum_dists += dist
+        
+        return [c/sum_dists for c in sum_colors]

@@ -1,9 +1,7 @@
-from genericpath import exists
 from .planner_mesh import PlannerMesh
 from compas.datastructures import Network
 from compas.geometry import Frame, Vector, Point
 from compas.geometry import cross_vectors, distance_point_point
-import time
 
 class SurfacePathPlanner():
     def __init__(self):
@@ -13,6 +11,7 @@ class SurfacePathPlanner():
         self.network.default_node_attributes = {
             'x':0, 'y':0, 'z':0,
             'vx':0, 'vy':0, 'vz':0,
+            'r':0, 'g':0, 'b':0,
             'neighbors':0, 'number_of_neighbors':0,
             'frame':None,
             'path_key':None
@@ -38,7 +37,7 @@ class SurfacePathPlanner():
         point = self.mesh.face_center(index)
         normal = self.mesh.face_normal(index)
         neighbors = self.mesh.face_neighbors(index)
-        color = [0,0,0]
+        color = self.mesh.face_color(index)
         attr_dict.update({
             'x':point[0], 'y':point[1], 'z':point[2],
             'vx':normal[0], 'vy':normal[1], 'vz':normal[2],
