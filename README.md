@@ -59,7 +59,12 @@
 (robknit) python -m compas_rhino.install -p robotic_knitcrete -v 7.0
 ```
 
-### 4. Notes on RPC:
+### 4. Installing the knitting requirements
+
+    (robknit) cd C:\Users\YOUR_USERNAME\workspace\src\knitting
+    (robknit) pip install -r requirements.txt
+
+### 5. Notes on RPC:
 
 Careful: RPC (Remote Procedure Call) for calling numpy functions from within Rhino, is using the CPython Interpreter of the latest installed environment, not defined specifically. If another interpreter should be used, this can be defined when creating the Proxy object.
 
