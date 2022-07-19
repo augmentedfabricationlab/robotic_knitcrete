@@ -1,7 +1,12 @@
+import math
+
+from compas.utilities import linspace
 from .planner_mesh import PlannerMesh
 from compas.datastructures import Network
 from compas.geometry import Frame, Vector, Point
+from compas.geometry import Translation
 from compas.geometry import cross_vectors, distance_point_point
+from compas.colors import Color, ColorMap
 
 class SurfacePathPlanner():
     def __init__(self):
@@ -12,10 +17,31 @@ class SurfacePathPlanner():
             'x':0, 'y':0, 'z':0,
             'vx':0, 'vy':0, 'vz':0,
             'r':0, 'g':0, 'b':0,
+            'color': None,
             'neighbors':0, 'number_of_neighbors':0,
             'frame':None,
-            'path_key':None
+            'thickness':0.0,
+            'radius':0.0,
+            'area':0.0,
+            'velocity':0.0,
+            'nozzle_distance':0.0,
+            'tool_frame':None
         }
+        self.fabrication_parameters = {
+            'material_flowrate':500.0,          # l/hr
+            'min_thickness':0.008,                # m
+            'max_thickness':0.022,               # m
+            'min_radius':0.040,                  # m
+            'max_radius':0.075,                  # m
+            'min_distance':0.100,               # m
+            'max_distance':0.300,               # m
+            'measured_radii':[0.0625, 0.075],        # [m]
+            'measured_distances':[0.150, 0.300],  # [m]
+            'measured_thicknesses':[0.012, 0.009], # [m]
+            'base_distance':0.150
+        }
+        self.color_map=None
+        self.thickness_map=None
 
     def set_quad_mesh(self, mesh):
         self.mesh = mesh
@@ -41,11 +67,17 @@ class SurfacePathPlanner():
         attr_dict.update({
             'x':point[0], 'y':point[1], 'z':point[2],
             'vx':normal[0], 'vy':normal[1], 'vz':normal[2],
-            'r':color[0], 'g':color[1], 'b':color[2],
+            'r':color.rgb255[0], 'g':color.rgb255[1], 'b':color.rgb255[2],
+            'color': color,
             'neighbors':neighbors,
             'number_of_neighbors':len(neighbors),
             'frame':None,
-            'path_key':None
+            'thickness':0.0,
+            'radius':0.0,
+            'area':0.0,
+            'velocity':0.0,
+            'nozzle_distance':0.0,
+            'tool_frame':None
         })
         attr_dict.update(**kwattr)
         self.network.add_node(key=index, attr_dict=attr_dict)
@@ -84,7 +116,7 @@ class SurfacePathPlanner():
         if 'index' not in locals():
             func = None
             
-        nodes = self.network.nodes_where(conditions=conditions)
+        nodes = self.network.nodes_where(conditions)
         if nodes != []:
             if orientation is not None:
                 vals = [self.network.node_attribute(key=k, name=orientation) for k in nodes]
@@ -151,3 +183,122 @@ class SurfacePathPlanner():
         min_d = min(distances.values())
         following = distances.keys()[distances.values().index(min_d)]
         return following
+
+    def set_fabrication_parameters(self, *args, **kwargs):
+        '''
+        *args : dict {}
+        **kwargs: keyword arguments and values
+        '''
+        self.fabrication_parameters.update(args)
+        for key, value in kwargs.items():
+            self.fabrication_parameters[key] = value
+
+    def set_color_map(self, colors=None, color_map=None, rangetype="full"):
+        if colors is not None:
+            if len(colors)==1:
+                color_map = ColorMap.from_color(colors[0], rangetype)
+            elif len(colors)==2:
+                color_map = ColorMap.from_two_colors(*colors)
+            elif len(colors)==3:
+                color_map = ColorMap.from_three_colors(*colors)
+            elif len(colors)>3:
+                raw_colors = []
+                for color in colors:
+                    raw_colors.append(color.rgb())
+                color_map = ColorMap(raw_colors)
+        self.color_map = color_map
+
+    def set_thickness_map(self, thicknesses):
+        thickness_map = []
+        if len(thicknesses)==2:
+            for i in linspace(0,1.0,256):
+                thickness_map.append(thicknesses[0]*(1-i)+thicknesses[1]*i)
+        elif len(thicknesses)==3:
+            for i in linspace(0,1.0,128):
+                thickness_map.append(thicknesses[0]*(1-i)+thicknesses[1]*i)
+            for i in linspace(0,1.0,128):
+                thickness_map.append(thicknesses[1]*(1-i)+thicknesses[2]*i)
+        elif len(thicknesses)>3:
+            thickness_map.extend(thicknesses)
+        self.thickness_map = thickness_map
+
+    def calculate_fabrication_parameters(self):
+        for node in self.network.nodes():
+            self.set_node_area_radius(node)
+            self.set_node_distance(node)
+            self.set_node_thickness(node)
+            self.set_node_velocity(node)
+
+    def set_node_area_radius(self, node):
+        area = self.mesh.face_area(node)
+        self.network.node_attribute(key = node, name='area', value=area)
+        self.network.node_attribute(key=node, name='radius', value=math.sqrt(area/math.pi))
+
+    def set_node_distance(self, node):
+        radius = self.network.node_attribute(key=node, name='radius')
+        distance = ((self.fabrication_parameters['max_distance']-self.fabrication_parameters['min_distance'])/
+                   (self.fabrication_parameters['max_radius']-self.fabrication_parameters['min_radius']))*radius
+        self.network.node_attribute(key=node, name='distance', value=distance)
+        frame = self.network.node_attribute(node, 'frame')
+        T = Translation.from_vector(frame.zaxis*distance)
+        tool_frame = frame.transformed(T)
+        self.network.node_attribute(key=node, name='tool_frame', value=tool_frame)
+
+    def set_node_thickness(self, node):
+        # r,g,b = self.node_color(node)
+        # r,g,b = [round(r), round(g), round(b)]
+        # i = 0
+        # nr = ng = nb = -1
+        # color_gradient = [value['color'] for value in self.color_gradient.values()]
+        # print(r,g,b)
+        # while i<=len(color_gradient)-1:
+        #     if nr != i:
+        #         if ((color_gradient[i][0] <= r and r <= color_gradient[i+1][0])
+        #            or (color_gradient[i][0] >= r and r >= color_gradient[i+1][0])):
+        #             nr=i
+        #             continue
+        #     elif ng != i:
+        #         if ((color_gradient[i][1] <= g and g <= color_gradient[i+1][1])
+        #            or (color_gradient[i][1] >= g and g >= color_gradient[i+1][1])):
+        #             ng=i
+        #             continue
+        #     elif nb != i:
+        #         if ((color_gradient[i][2] <= b and b <= color_gradient[i+1][2])
+        #            or (color_gradient[i][2] >= b and b >= color_gradient[i+1][2])):
+        #             nb=i
+        #             continue
+        #     if nr == i and ng == i and nb == i:
+        #         break
+        #     i+=1
+        # div_r = color_gradient[i][0]-color_gradient[i+1][0]
+        # div_g = color_gradient[i][1]-color_gradient[i+1][1]
+        # div_b = color_gradient[i][2]-color_gradient[i+1][2]
+        # ndiv = max([abs(div_r), abs(div_g), abs(div_b)])
+        # idiv = [abs(div_r), abs(div_g), abs(div_b)].index(ndiv)
+        # ci = [r, g, b][idiv]
+        # if color_gradient[i][idiv] >= ci:
+        #     par = (ci-color_gradient[i][idiv])/(color_gradient[i+1][idiv]-color_gradient[i][idiv])
+        # elif color_gradient[i+1][idiv] >=ci:
+        #     par = (ci-color_gradient[i+1][idiv])/(color_gradient[i][idiv]-color_gradient[i+1][idiv])
+        # ti = self.color_gradient[i]['thickness']
+        # ti1 = self.color_gradient[i+1]['thickness']
+        # t = (ti1-ti)*par+ti
+        # print(par,t)
+        # print(self.color_map.colors)
+        node_color = self.network.node_attribute(node, 'color').rgb255
+        n=0
+        while n < 255:
+            ncol = self.network.node_attribute(n, 'color').rgb255
+            if ncol == node_color:
+                break
+            n+=1
+        t = self.thickness_map[n]
+        self.network.node_attribute(key=node, name='thickness', value=t)
+
+    def set_node_velocity(self, node):
+        volume = self.network.node_attribute(key=node, name='area')*self.network.node_attribute(key=node, name='thickness')
+        velocity = self.network.node_attribute(key=node, name='radius')/(volume/(self.fabrication_parameters['material_flowrate']/60))
+        self.network.node_attribute(key=node, name='velocity', value=velocity)
+    
+    def node_color(self, node, color_type='rgb'):
+        return self.network.node_attribute(node, 'color').rgb255

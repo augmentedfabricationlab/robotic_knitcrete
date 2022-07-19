@@ -1,7 +1,7 @@
 from compas.datastructures import Mesh
 from compas.geometry import distance_point_point
 from itertools import product
-
+from compas.colors import Color
 
 class PlannerMesh(Mesh):
     def __init__(self, name=None, default_vertex_attributes=None, default_edge_attributes=None, default_face_attributes=None):
@@ -63,17 +63,19 @@ class PlannerMesh(Mesh):
         return cls.from_vertices_and_faces(vertices, faces)
 
     def vertex_color(self, key, color_type='rgb'):
-        return self.vertex_attributes(key, color_type)
+        color = Color.from_rgb255(
+            self.vertex_attribute(key, 'r'),
+            self.vertex_attribute(key, 'g'),
+            self.vertex_attribute(key, 'b')
+        )
+        return color
 
     def face_color (self, key, color_type='rgb'):
         vertices = self.face_vertices(key)
-        center = self.face_center(key)
-        sum_colors = [0,0,0]
-        sum_dists = 0
-        for vertex in vertices:
-            dist = distance_point_point(center, self.vertex_coordinates(vertex))
-            for i,c in enumerate(self.vertex_color(key, color_type)):
-                sum_colors[i] += c*dist
-            sum_dists += dist
+        # center = self.face_center(key)
+        vtx_colors = [self.vertex_color(vertex) for vertex in vertices]
+        c12 = Color(vtx_colors[0].r*0.5+vtx_colors[1].r*0.5, vtx_colors[0].g*0.5+vtx_colors[1].g*0.5, vtx_colors[0].b*0.5+vtx_colors[1].b*0.5)
+        c34 = Color(vtx_colors[2].r*0.5+vtx_colors[3].r*0.5, vtx_colors[2].g*0.5+vtx_colors[3].g*0.5, vtx_colors[2].b*0.5+vtx_colors[3].b*0.5)
+        c1234 = Color(c12.r*0.5+c34.r*0.5, c12.g*0.5+c34.g*0.5, c12.b*0.5+c34.b*0.5)
         
-        return [c/sum_dists for c in sum_colors]
+        return vtx_colors[0]
