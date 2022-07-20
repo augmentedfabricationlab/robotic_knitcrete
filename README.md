@@ -3,7 +3,7 @@
 ## Requirements for Form-Finding
 
 * [Rhinoceros 3D 7.0](https://www.rhino3d.com/): Update Rhino to the newest version
-* EQlib (install EQlib and EQlib-Mkl via the Rhino Package Manager)
+* EQlib (install EQlib and EQlib-Mkl via the Rhino Package Manager). Choose the newest "0.1.x" version (not  "0.2.x")
 * [Karamba 3D](https://www.karamba3d.com/download/): Download the file and install the FREE version 
 
 
