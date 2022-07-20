@@ -29,16 +29,12 @@ class SurfacePathPlanner():
         }
         self.fabrication_parameters = {
             'material_flowrate':500.0,          # l/hr
-            'min_thickness':0.008,                # m
-            'max_thickness':0.022,               # m
-            'min_radius':0.040,                  # m
-            'max_radius':0.075,                  # m
-            'min_distance':0.100,               # m
-            'max_distance':0.300,               # m
+            'thickness_range':[0.008, 0.022],     # m
+            'radius_range':[0.040, 0.075],        # m
+            'distance_range':[0.100, 0.300],      # m
             'measured_radii':[0.0625, 0.075],        # [m]
             'measured_distances':[0.150, 0.300],  # [m]
             'measured_thicknesses':[0.012, 0.009], # [m]
-            'base_distance':0.150
         }
         self.color_map=None
         self.thickness_map=None
@@ -222,10 +218,10 @@ class SurfacePathPlanner():
             thickness_map.extend(thicknesses)
         self.thickness_map = thickness_map
 
-    def calculate_fabrication_parameters(self):
+    def calculate_fabrication_parameters(self, measured=True):
         for node in self.network.nodes():
             self.set_node_area_radius(node)
-            self.set_node_distance(node)
+            self.set_node_distance(node, measured)
             self.set_node_thickness(node)
             self.set_node_velocity(node)
 
@@ -234,10 +230,16 @@ class SurfacePathPlanner():
         self.network.node_attribute(key = node, name='area', value=area)
         self.network.node_attribute(key=node, name='radius', value=math.sqrt(area/math.pi))
 
-    def set_node_distance(self, node):
+    def set_node_distance(self, node, measured=True):
         radius = self.network.node_attribute(key=node, name='radius')
-        distance = ((self.fabrication_parameters['max_distance']-self.fabrication_parameters['min_distance'])/
-                   (self.fabrication_parameters['max_radius']-self.fabrication_parameters['min_radius']))*radius
+        if measured:
+            drange = self.fabrication_parameters['measured_distances']
+            rrange = self.fabrication_parameters['measured_radii']
+        else:
+            drange = self.fabrication_parameters['distance_range']
+            rrange = self.fabrication_parameters['radius_range']
+        
+        distance = ((drange[1]-drange[0])/(rrange[1]-rrange[0]))*radius
         self.network.node_attribute(key=node, name='distance', value=distance)
         frame = self.network.node_attribute(node, 'frame')
         T = Translation.from_vector(frame.zaxis*distance)
@@ -245,46 +247,6 @@ class SurfacePathPlanner():
         self.network.node_attribute(key=node, name='tool_frame', value=tool_frame)
 
     def set_node_thickness(self, node):
-        # r,g,b = self.node_color(node)
-        # r,g,b = [round(r), round(g), round(b)]
-        # i = 0
-        # nr = ng = nb = -1
-        # color_gradient = [value['color'] for value in self.color_gradient.values()]
-        # print(r,g,b)
-        # while i<=len(color_gradient)-1:
-        #     if nr != i:
-        #         if ((color_gradient[i][0] <= r and r <= color_gradient[i+1][0])
-        #            or (color_gradient[i][0] >= r and r >= color_gradient[i+1][0])):
-        #             nr=i
-        #             continue
-        #     elif ng != i:
-        #         if ((color_gradient[i][1] <= g and g <= color_gradient[i+1][1])
-        #            or (color_gradient[i][1] >= g and g >= color_gradient[i+1][1])):
-        #             ng=i
-        #             continue
-        #     elif nb != i:
-        #         if ((color_gradient[i][2] <= b and b <= color_gradient[i+1][2])
-        #            or (color_gradient[i][2] >= b and b >= color_gradient[i+1][2])):
-        #             nb=i
-        #             continue
-        #     if nr == i and ng == i and nb == i:
-        #         break
-        #     i+=1
-        # div_r = color_gradient[i][0]-color_gradient[i+1][0]
-        # div_g = color_gradient[i][1]-color_gradient[i+1][1]
-        # div_b = color_gradient[i][2]-color_gradient[i+1][2]
-        # ndiv = max([abs(div_r), abs(div_g), abs(div_b)])
-        # idiv = [abs(div_r), abs(div_g), abs(div_b)].index(ndiv)
-        # ci = [r, g, b][idiv]
-        # if color_gradient[i][idiv] >= ci:
-        #     par = (ci-color_gradient[i][idiv])/(color_gradient[i+1][idiv]-color_gradient[i][idiv])
-        # elif color_gradient[i+1][idiv] >=ci:
-        #     par = (ci-color_gradient[i+1][idiv])/(color_gradient[i][idiv]-color_gradient[i+1][idiv])
-        # ti = self.color_gradient[i]['thickness']
-        # ti1 = self.color_gradient[i+1]['thickness']
-        # t = (ti1-ti)*par+ti
-        # print(par,t)
-        # print(self.color_map.colors)
         node_color = self.network.node_attribute(node, 'color').rgb255
         n=0
         while n < 255:
