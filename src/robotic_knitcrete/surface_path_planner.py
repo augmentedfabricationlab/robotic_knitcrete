@@ -80,9 +80,12 @@ class SurfacePathPlanner():
 
     def add_edge(self, start, end):
         new_edge = self.network.add_edge(start, end)
+        # if self.network.node_attribute(key=start, name='frame') is None:
+        #     self.set_node_frame_from_edge(start, new_edge)
+        # self.set_node_frame_from_edge(end, new_edge)
         if self.network.node_attribute(key=start, name='frame') is None:
-            self.set_node_frame_from_edge(start, new_edge)
-        self.set_node_frame_from_edge(end, new_edge)
+            self.set_node_frame(start)
+        self.set_node_frame(end)
         
     def set_node_frame_from_edge(self, node, edge):
         zvec = Vector.from_data(self.network.node_attributes(key=node, names=['vx','vy','vz']))
@@ -92,6 +95,14 @@ class SurfacePathPlanner():
                       self.network.edge_vector(edge[0], edge[1]),
                       yvec)
         self.network.node_attribute(key=node, name='frame', value=frame)
+
+    def set_node_frame(self, node):
+        norm = Vector.from_data(self.network.node_attributes(key=node, names=['vx','vy','vz']))
+        v1 = cross_vectors(norm, Vector.Yaxis())
+        v2 = cross_vectors(norm,v1)
+        frame = Frame(Point.from_data(self.network.node_coordinates(node)), v1, v2)
+        self.network.node_attribute(key=node, name='frame', value=frame)
+        return frame
 
     def get_node(self, **kwargs):
         """
@@ -218,19 +229,19 @@ class SurfacePathPlanner():
             thickness_map.extend(thicknesses)
         self.thickness_map = thickness_map
 
-    def calculate_fabrication_parameters(self, measured=True):
+    def calculate_fabrication_parameters(self, num_layers, n_layer, measured=True):
         for node in self.network.nodes():
             self.set_node_area_radius(node)
-            self.set_node_distance(node, measured)
             self.set_node_thickness(node)
+            self.set_node_distance(node, num_layers, n_layer, measured)
             self.set_node_velocity(node)
 
     def set_node_area_radius(self, node):
         area = self.mesh.face_area(node)
-        self.network.node_attribute(key = node, name='area', value=area)
+        self.network.node_attribute(key=node, name='area', value=area)
         self.network.node_attribute(key=node, name='radius', value=math.sqrt(area/math.pi))
 
-    def set_node_distance(self, node, measured=True):
+    def set_node_distance(self, node, num_layers, n_layer, measured=True):
         radius = self.network.node_attribute(key=node, name='radius')
         if measured:
             drange = self.fabrication_parameters['measured_distances']
@@ -238,11 +249,12 @@ class SurfacePathPlanner():
         else:
             drange = self.fabrication_parameters['distance_range']
             rrange = self.fabrication_parameters['radius_range']
-        
+
         distance = ((drange[1]-drange[0])/(rrange[1]-rrange[0]))*radius
+        distance_thickness = self.network.node_attribute(key=node, name='thickness')*(n_layer/num_layers)
         self.network.node_attribute(key=node, name='distance', value=distance)
         frame = self.network.node_attribute(node, 'frame')
-        T = Translation.from_vector(frame.zaxis*distance)
+        T = Translation.from_vector(frame.zaxis*-(distance+distance_thickness))
         tool_frame = frame.transformed(T)
         self.network.node_attribute(key=node, name='tool_frame', value=tool_frame)
 
