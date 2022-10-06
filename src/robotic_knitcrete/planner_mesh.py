@@ -32,6 +32,7 @@ class PlannerMesh(Mesh):
         """
         mesh = cls()
         vertexcolors = rhinomesh.geometry.VertexColors
+        print(vertexcolors[0])
         if len(vertexcolors) == 0:
             for vertex in rhinomesh.geometry.Vertices:
                 mesh.add_vertex(attr_dict=dict(x=float(vertex.X), y=float(vertex.Y), z=float(vertex.Z),
@@ -70,12 +71,12 @@ class PlannerMesh(Mesh):
         )
         return color
 
-    def face_color (self, key, color_type='rgb'):
+    def face_color(self, key, color_type='rgb'):
         vertices = self.face_vertices(key)
         # center = self.face_center(key)
         vtx_colors = [self.vertex_color(vertex) for vertex in vertices]
-        c12 = Color(vtx_colors[0].r*0.5+vtx_colors[1].r*0.5, vtx_colors[0].g*0.5+vtx_colors[1].g*0.5, vtx_colors[0].b*0.5+vtx_colors[1].b*0.5)
-        c34 = Color(vtx_colors[2].r*0.5+vtx_colors[3].r*0.5, vtx_colors[2].g*0.5+vtx_colors[3].g*0.5, vtx_colors[2].b*0.5+vtx_colors[3].b*0.5)
-        c1234 = Color(c12.r*0.5+c34.r*0.5, c12.g*0.5+c34.g*0.5, c12.b*0.5+c34.b*0.5)
-        
-        return vtx_colors[0]
+        r = (vtx_colors[0].r + vtx_colors[1].r + vtx_colors[2].r + vtx_colors[3].r)/4
+        g = (vtx_colors[0].g + vtx_colors[1].g + vtx_colors[2].g + vtx_colors[3].g)/4
+        b = (vtx_colors[0].b + vtx_colors[1].b + vtx_colors[2].b + vtx_colors[3].b)/4
+        face_color = Color(r,g,b)
+        return face_color
